@@ -8,13 +8,10 @@ open FStar.Option
 open FStar.Mul
 open FStar.Seq
 open FStar.UInt
-open Spec.IRandom
 
 open FStar.Endianness
 open Spec.Curve25519
 open Spec.Ed25519
-
-open Spec.IRandom
 
 open Spec.SHA2_256
 
@@ -61,21 +58,6 @@ let isPointOnCurve point =
 	let right = fadd z2 dt2 in 
 	(left = right)
 
-val _OS2ECP2Points : point: bytes{Seq.length point = 32} -> Tot(option twisted_edward_point)
-let _OS2ECP2Points point = 
-  let y = little_endian point in
-  let sign = true in
-  let y = y % (pow2 255) in
-  let x = recover_x y sign in
-  match x with
-  | Some x -> Some (x, y % prime, one, x `fmul` (y % prime))
-  | _ -> 
-  		let sign = false in 
-  		let x = recover_x y sign in 
-  		match x with 
-  		|Some x -> Some (x, y % prime, one, x `fmul` (y % prime))
-  		| _ -> None
-
 val _ECP2OS : gamma: twisted_edward_point -> Tot(r: bytes {Seq.length r = 32})
 let _ECP2OS gamma = point_compress gamma
 
@@ -96,20 +78,19 @@ let rec _helper_I2OSP value s counter  =
 	let r = value % mask in 
 	let r = nat_to_uint8 r in 
 	let s = upd s counter r in 
-	let number = value / mask  in (*changed *)
+	let number = value / mask  in 
 		if (counter -1 >=0 ) then 
 			_helper_I2OSP number s (counter -1 )
-else s
+	else s
 
 val _I2OSP: value: nat -> n: int{n > 0} -> Tot(r: bytes{Seq.length r = n})
 let _I2OSP value n = 
 	if (pow2 (n * 8)  <= value) then Seq.create n 0uy (* changed*)
 	else 
 		let s = Seq.create n 0uy in 
-(_helper_I2OSP value s (n -1))
+	(_helper_I2OSP value s (n -1))
 
-val _helper_OS2IP: s: bytes  -> counter: nat {counter < Seq.length s} -> number: nat -> 
-	Tot (nat)(decreases (Seq.length s - counter))
+val _helper_OS2IP: s: bytes  -> counter: nat {counter < Seq.length s} -> number: nat -> Tot (nat)(decreases (Seq.length s - counter))
 
 let rec _helper_OS2IP s counter number = 
 	let temp = Seq.index s counter in 
@@ -279,23 +260,3 @@ let _ECVRF_verify public_key proof input =
 	let v = scalarAddition gammac hs in 
 	let c_prime = _ECVRF_hash_points generator h public_key gamma u v in 
 	(_OS2IP c) = c_prime
-
-(*)
-let test_stuff n =
-	let f i_ =
-		let i = _I2OSP i_ 32 in
-		let i = little_endian_ i in
-		pointMultiplication generator i
-	in
-	let gs = Seq.init n f in
-	let h x = _OS2ECP (_ECP2OS x) in
-	let rec loop k acc =
-		let rec loop' i acc =
-			let gsum = scalarAddition (Seq.index gs i) (Seq.index gs (k-i)) in
-			if i < 0 then acc else loop' (i-1) ((i, k, h gsum, h (Seq.index gs k))::acc)
-		in
-		if k < 0 then acc else loop (k-1) (loop' k acc)
-	in
-	loop (n-1) []
-(*)
-
