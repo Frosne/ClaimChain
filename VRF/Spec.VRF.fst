@@ -35,11 +35,32 @@ let maxHash = (maxint(U64) + 1)/8
 let hash (len:size_nat{len < maxHash}) (input:lbytes len)  = 
 	hash256	len input
 
-let curveOrder : elem = 7237005577332262213973186563042994240857116359379907606001950938285454250989	
+let orderBasePoint : elem = 7237005577332262213973186563042994240857116359379907606001950938285454250989	
 
-val _ECVRF_hash_to_curve: ctr: nat {ctr <= curveOrder} -> pub: lbytes 32 -> len : size_nat{len < maxint U32 - 64} -> 
+let orderBasePointBytes = _I2OSP(orderBasePoint) 
+
+val normalise_point: p: ext_point -> Tot ext_point
+
+let normalise_point p = 
+	let (x_, y_, z_, t_) = p in
+	let zinv = modp_inv z_ in 
+	let x = fmul x_ zinv in 
+	let y = fmul y_ zinv in 
+	let t = fmul t_ zinv in 
+	(x, y, 1, t)
+
+val pointCompare: p1: ext_point -> p2 : ext_point -> Tot bool
+
+let pointCompare p1 p2 = 
+	let p1 = normalise_point p1 in 
+	let p2 = normalise_point p2 in 
+	let (x1, y1, z1, t1) = p1 in 
+	let (x2, y2, z2, t2) = p2 in 
+	x1 = x2 && y1 = y2 && z1 = z2 && t1 = t2
+
+val _ECVRF_hash_to_curve: ctr: nat {ctr <= orderBasePoint} -> pub: lbytes 32 -> len : size_nat{len < maxint U32 - 64} -> 
 	input: (lbytes len) -> Tot (option ext_point)
-	(decreases (curveOrder - ctr))
+	(decreases (orderBasePoint - ctr))
 
 let rec  _ECVRF_hash_to_curve ctr pub len input = 
 	let tmp =  create (len + 64) (u8 0) in 
@@ -49,8 +70,21 @@ let rec  _ECVRF_hash_to_curve ctr pub len input =
 	let hashed = hash (len + 64) tmp in 
 	let possiblePoint = _OS2ECP hashed in 
 	match possiblePoint with 
-		| Some p -> Some p
-		| None -> if ctr < curveOrder then 
+		| Some p -> 
+			let possiblePoint = p in 
+			let cofactorCheck = normalise_point(point_mul 32 orderBasePointBytes possiblePoint) in 
+			let pointAtInfinity = normalise_point(point_mul 32 orderBasePointBytes g) in 
+			let r = pointCompare pointAtInfinity cofactorCheck in 
+			if r then 
+				begin 
+					if ctr < orderBasePoint then 
+						_ECVRF_hash_to_curve (ctr + 1) pub len input 
+					else 
+						None	
+				end	
+			else 
+				Some p	
+		| None -> if ctr < orderBasePoint then 
 				_ECVRF_hash_to_curve (ctr + 1) pub len input
 			else
 				None	
