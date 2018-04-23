@@ -49,6 +49,28 @@ assume val decompress:
 noeq type bignumCounter = 
 	|C: high: uint_t U128 -> low: uint_t U128 -> bignumCounter
 
+
+val point_norm:out: point ->  p: point ->zInvBuffer: felem ->  Stack unit 
+	(requires (fun h -> live h p /\ live h zInvBuffer /\ disjoint p zInvBuffer))
+	(ensures (fun h0 _ h1 -> preserves_live h0 h1))
+
+let point_norm out p zInvBuffer = 
+	let x_ = sub p (size 0) (size 5) in 
+	let y_ = sub p (size 5) (size 5) in 
+	let z_ = sub p (size 10) (size 5) in 
+	let t_ = sub p (size 15) (size 5) in 
+	disjoint_sub_lemma1 p zInvBuffer (size 10) (size 5);
+	inverse zInvBuffer z_;
+	let x = sub out (size 0) (size 5) in 
+	let y = sub out (size 5) (size 5) in 
+	let z = sub out (size 10) (size 5) in 
+	let t = sub out (size 15) (size 5) in 
+	fmul x x_ zInvBuffer;
+	fmul y y_ zInvBuffer; 
+	fmul z z_ zInvBuffer; 
+	fmul t t_ zInvBuffer; 
+	()
+
 val bignumCounterInc: b: bignumCounter{let h = uint_v b.high in let l = uint_v b.low in (pow2 128 * h + l) < pow2 256 -1} -> r: bignumCounter{
 	let h = uint_v r.high in let l = uint_v r.low in 
 	let h_ = uint_v b.high in let l_ = uint_v b.low in 
@@ -87,10 +109,10 @@ val pointCompare: a: point -> b: point -> Stack bool
 
 let pointCompare a b = 
 	let a0_i = (index a (size 0)) in 
-	let a0 = u128_to_UInt128 a0_i in 
+	let a0 = u64_to_UInt64 a0_i in 
 	let b0_i = (index b (size 0)) in 
-	let b0 = u128_to_UInt128 b0_i in  
-	let eq = FStar.UInt128.eq in 
+	let b0 = u64_to_UInt64 b0_i in  
+	let eq = FStar.UInt64.eq in 
 	eq a0 b0
 
 val _helper_ECVRF_hash_to_curve: 
@@ -103,7 +125,7 @@ val _helper_ECVRF_hash_to_curve:
     curveOrderCounter: bignumCounter{bignumCounterLess counter curveOrderCounter == true /\ (
     	let h = uint_v curveOrderCounter.high in let l = uint_v curveOrderCounter.low in 
 		(pow2 128 * h + l) < pow2 256 - 1)} -> 
-    cofactor_check_buffer: lbuffer uint128 40 -> 
+    cofactor_check_buffer: lbuffer limb 65 -> 
     Stack bool
         (requires (fun h0 -> live h0 pointBuffer /\ live h0 output /\ live h0 cofactor_check_buffer /\ live h0 curveOrder /\ disjoint cofactor_check_buffer pointBuffer))
 		(ensures (fun h0 _ h1 -> preserves_live h0 h1)) 
@@ -126,8 +148,11 @@ let rec _helper_ECVRF_hash_to_curve #len pointBuffer output clen counter curveOr
   	let successful = decompress pointBuffer bufferForComputedHash in 
   	if successful then 
   		let buffer_point = sub cofactor_check_buffer (size 20) (size 20) in 
+  		let confactorCheckZInv = sub cofactor_check_buffer (size 60) (size 5) in 
+  		let normalizedPoint = sub cofactor_check_buffer (size 40) (size 20) in 
   		disjoint_sub_lemma1 cofactor_check_buffer pointBuffer (size 20) (size 20);
   		point_mult buffer_point pointBuffer curveOrder;
+  		point_norm normalizedPoint buffer_point confactorCheckZInv;
   		let buffer_point_infinity = sub cofactor_check_buffer (size 0) (size 20) in 
   		let r = pointCompare buffer_point buffer_point_infinity in 
   		if r then 
@@ -158,7 +183,7 @@ val _ECVRF_hash_to_curve:
 	curveOrder: word -> 
     curveOrderCounter: bignumCounter{let h = uint_v curveOrderCounter.high in let l = uint_v curveOrderCounter.low in (
     	(pow2 128 * h + l) < pow2 256 - 1 && (pow2 128 * h + l > 0))} -> 
-    cofactor_check_buffer: lbuffer uint128 40 ->
+    cofactor_check_buffer: lbuffer limb 65 ->
 	Stack bool 
 		(requires
 			(fun h0 -> live h0 pointBuffer /\ live h0 input /\ live h0 publicKey /\ live h0 cofactor_check_buffer /\ live h0 curveOrder /\ disjoint cofactor_check_buffer pointBuffer)
