@@ -49,28 +49,6 @@ assume val decompress:
 noeq type bignumCounter = 
 	|C: high: uint_t U128 -> low: uint_t U128 -> bignumCounter
 
-
-val point_norm:out: point ->  p: point ->zInvBuffer: felem ->  Stack unit 
-	(requires (fun h -> live h p /\ live h zInvBuffer /\ disjoint p zInvBuffer))
-	(ensures (fun h0 _ h1 -> preserves_live h0 h1))
-
-let point_norm out p zInvBuffer = 
-	let x_ = sub p (size 0) (size 5) in 
-	let y_ = sub p (size 5) (size 5) in 
-	let z_ = sub p (size 10) (size 5) in 
-	let t_ = sub p (size 15) (size 5) in 
-	disjoint_sub_lemma1 p zInvBuffer (size 10) (size 5);
-	inverse zInvBuffer z_;
-	let x = sub out (size 0) (size 5) in 
-	let y = sub out (size 5) (size 5) in 
-	let z = sub out (size 10) (size 5) in 
-	let t = sub out (size 15) (size 5) in 
-	fmul x x_ zInvBuffer;
-	fmul y y_ zInvBuffer; 
-	fmul z z_ zInvBuffer; 
-	fmul t t_ zInvBuffer; 
-	()
-
 val bignumCounterInc: b: bignumCounter{let h = uint_v b.high in let l = uint_v b.low in (pow2 128 * h + l) < pow2 256 -1} -> r: bignumCounter{
 	let h = uint_v r.high in let l = uint_v r.low in 
 	let h_ = uint_v b.high in let l_ = uint_v b.low in 
