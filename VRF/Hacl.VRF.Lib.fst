@@ -54,6 +54,14 @@ assume val compress:
 		(requires (fun h -> live h out /\ live h input))
 		(ensures (fun h0 _ h1 -> preserves_live h0 h1 /\ modifies1 out h0 h1))
 
+assume val decompress: 
+	out: point -> 
+	input: lbuffer uint8 32 -> 
+	Stack bool 
+		(requires (fun h -> live h out /\ live h input))
+		(ensures (fun h0 _ h1 -> preserves_live h0 h1 /\ modifies1 out h0 h1))
+
+
 let seqelem = lseq limb 5
 
 let getx (p:point) : Tot felem = sub p (size 0) (size 5)

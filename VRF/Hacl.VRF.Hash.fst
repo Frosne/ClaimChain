@@ -15,7 +15,6 @@ open Spec.Lib.IntBuf.Lemmas
 
 open Hacl.VRF.HashToCurveFinal
 open Hacl.VRF.HashPoints
-(* open Hacl.VRF.Bignum *)
 
 open Hacl.VRF.Lib
 
@@ -78,7 +77,7 @@ val _ECVRF_prove:
 	pk: point  -> 
 	Stack bool 
 		(requires (fun h0 -> live h0 proof /\ live h0 input /\ live h0 secret /\ live h0 pk /\ disjoint proof secret))
-		(ensures (fun h0 _ h1 -> preserves_live h0 h1))
+		(ensures (fun h0 _ h1 -> preserves_live h0 h1 /\ modifies1 proof h0 h1))
 
 let _ECVRF_prove #len proof inputLength input secret pk = 
 	let r = alloc #_ #(bool) (size 120) (u64(0)) 
@@ -120,23 +119,6 @@ let _ECVRF_prove #len proof inputLength input secret pk =
 			_ECVRF_prove_2 proof secret
 
 (*)
-val decodeProof: gamma: point -> 
-			c: scalar -> s: scalar -> 
-			proof: lbuffer uint8 (v(size 80)) -> 
-			Stack bool 
-		(requires  (fun h0 -> live h0 proof))
-		(ensures (fun h0 _ h1 -> preserves_live h0 h1))
-
-let decodeProof gamma c s proof = 
-	let gamma' = sub proof (size 0) (size 32) in 
-	let c' = sub proof (size 32) (size 32) in 
-	let s' = sub proof (size 48) (size 32) in 
-	let valid = decompress gamma gamma' in 
-	if not valid then false else
-	toBn c c';
-	toBn s s'; 
-	true
-
 val proofToHash:
 			beta: lbuffer uint8 (v size_hash) ->
 			gamma: point -> 
