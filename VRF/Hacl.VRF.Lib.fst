@@ -30,7 +30,8 @@ assume val point_mult: out: point ->p: point ->
 assume val point_add: out: point ->p: point ->  
 	q: point -> 
 	Stack unit 
-		(requires (fun h0 -> live h0 out /\ live h0 p /\ live h0 q /\ disjoint out p))
+		(requires (fun h0 -> live h0 out /\ live h0 p /\ live h0 q /\ 
+			disjoint out p /\ disjoint out q))
 		(ensures (fun h0 _ h1 -> preserves_live h0 h1 /\ modifies1 out h0 h1 ))
 
 
@@ -134,6 +135,29 @@ assume val modifies2_sub_lemma: #a:Type0 ->  #a2:Type0 -> #len:size_nat ->  #len
 			  SMTPat (live h0 b2);
 			  SMTPat (modifies2 (sub #a #len #(v n) b start n) (sub #a2 #len2 #(v n2) b2 start2 n2)   h0 h1)]			  
 
+assume val modifies3_sub_lemma: #a:Type0 ->
+	#len:size_nat -> 
+	b:lbuffer a len ->
+	start:size_t -> n:size_t{v start+v n <= len} ->
+	start2:size_t -> n2:size_t{v start2+v n2 <= len} ->
+	start3:size_t -> n3:size_t{v start3+v n3 <= len} ->
+ 	h0:mem -> h1:mem -> Lemma
+	(requires (live h0 b/\ 
+	modifies3 (sub #a #len #(v n) b start n)  
+		(sub #a #len #(v n2) b start2 n2)
+		(sub #a #len #(v n3) b start3 n3) h0 h1
+	))
+	(ensures  (modifies1 b h0 h1))
+	[SMTPat (live h0 b);
+	SMTPat (modifies3 
+		(sub #a #len #(v n) b start n) 
+		(sub #a #len #(v n2) b start2 n2)  
+		(sub #a #len #(v n3) b start3 n3)   h0 h1)]			  
+
+
+
+
+
 
 assume val modifies_0_modifies_3: #a1:Type0 -> #a2:Type0  -> #a3:Type0 -> #len1:size_nat -> #len2:size_nat -> #len3:size_nat -> 
 	b1:lbuffer a1 len1 -> b2:lbuffer a2 len2 -> b3:lbuffer a3 len3 -> h0:mem -> h1:mem -> Lemma
@@ -155,3 +179,8 @@ assume val modifies_3_modifies_3: #a1:Type0 -> #a2:Type0  -> #a3:Type0 -> #len1:
 			  SMTPat (live h0 b2);
 			  SMTPat (live h0 b3)
 			  ]		
+
+assume val equalBuffer: #a: Type0 -> #len:size_nat ->
+	b1: lbuffer a len -> b2: lbuffer a len -> Stack bool
+	(requires (fun h0  -> live h0 b1 /\ live h0 b2))
+	(ensures (fun h0 _ h1 -> preserves_live h0 h1 /\ modifies0 h0 h1))

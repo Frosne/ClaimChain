@@ -54,7 +54,6 @@ let proofToHash beta proof =
 					let bT = sub  bufferForPreHash (size 0) (size 32) in 
 					compress bT pointBuffer;
 					hash beta (size 32) bufferForPreHash;
-					assert(False);
 					true
 				)
 			end
